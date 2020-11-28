@@ -22,7 +22,7 @@ int main(void) {
     obtaint_fn *f = (obtaint_fn *) get_token;
 
     string_with_pos swp = {
-        .str = "int x = 7;",
+        .str = "int x = 7; x >>= 2 << 2;",
         .pos = 0
     };
 

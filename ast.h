@@ -1,9 +1,25 @@
 #ifndef AST_H
 #define AST_H 1
 
+//Look, I wrote all this code before I wrote vector.h
+//Yeah, I might come back and fix up this code to use it,
+//but don't hold your breath.
+
+//By the way, this idea of having my own pool of nodes 
+//in a vector was because I wanted easy serialization. 
+//But looking back, that's a little misguided. It would
+//have been much simpler to just use malloc/free for each
+//node
+
 #include <assert.h>
 #include <stdlib.h>
 
+#include "lexer.h"
+
+//This got really messy on me. I'm now defining similar
+//enum values in multiple different header files. Of course,
+//my plan was always to completely rewrite everything from
+//scratch once I had encountered all these types of issues
 typedef enum {
     NUMBER,
     IDENT,
@@ -19,8 +35,9 @@ typedef enum {
 typedef struct {
     astnode_t node_type;
 
+    //TODO: has to be updated to use all my new data types
     union {
-        char op;
+        kw_t op;
         long value;
         char ident_str[MAX_IDENT + 1];
     };

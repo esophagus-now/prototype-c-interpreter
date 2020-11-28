@@ -20,6 +20,8 @@ the tokens as a type. This is why lexer_t contains a
 #include "util/symtab.h"
 #include "util/vector.h"
 
+//TODO: move token type enums/macros into a separate header
+
 //getc was already taken
 typedef int obtainc_fn(void *arg);
 
@@ -91,7 +93,7 @@ extern char const *const token_t_names[];
     X(return),	\
     X(goto),
 
-#define TWO_CHARACTER_OPERATORS\
+#define MULTI_CHARACTER_OPERATORS\
     X(neq, "!="),\
     X(mod_eq, "%="),\
     X(and_eq, "&="),\
@@ -108,7 +110,11 @@ extern char const *const token_t_names[];
     X(rshift, ">>"),\
     X(geq, ">="),\
     X(xor_eq, "^="),\
-    X(or_eq, "|="),
+    X(or_eq, "|="),\
+    X(lshift_eq, "<<="),\
+    X(rshift_eq, ">>="),\
+    X(and_and, "&&"),\
+    X(or_or, "||"),\
 
 
 //This enum is what gives symbolic names to keywords
@@ -124,7 +130,7 @@ typedef enum {
 
     //Keywords for the multi-character operators
     #define X(name, str) KW_##name
-    TWO_CHARACTER_OPERATORS
+    MULTI_CHARACTER_OPERATORS
     #undef X
 } kw_t;
 

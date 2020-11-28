@@ -20,7 +20,7 @@ char const *const keywords[] = {
     #undef X
 
     #define X(name, str) str
-    TWO_CHARACTER_OPERATORS
+    MULTI_CHARACTER_OPERATORS
     #undef X
 };
 
@@ -202,13 +202,37 @@ static int lex_look_again(lexer_state *state, token *dest) {
     case '=': 
         if (second == first) {
             //printf("KW: [%s]\n", pair);
+
+            state->lookahead = OBTAINC(state);
+
+            //UGLY UGLY UGLY
+            //I totally forgot about the shift-assignment
+            //operators, so now I need this special case 
+            //for three-char keywords. For now I'm just
+            //planning to leave this as a band-aid fix,
+            //but is there a more elegant solution?
+            if (first == '<') {
+                if (state->lookahead == '=') {
+                    dest->type = TOK_KW;
+                    dest->as_kw = KW_lshift_eq;
+                    state->lookahead = OBTAINC(state);
+                    return 1;
+                }
+            } else if (first == '>') {
+                if (state->lookahead == '=') {
+                    dest->type = TOK_KW;
+                    dest->as_kw = KW_rshift_eq;
+                    state->lookahead = OBTAINC(state);
+                    return 1;
+                }
+            }
+            //(end of UGLY business)
             
             unsigned kw_num = get_kw_number(pair);
             assert(kw_num != 0);
             dest->type = TOK_KW;
             dest->as_kw = kw_num;
 
-            state->lookahead = OBTAINC(state);
             return 1;
         }
         //Fall-through intended
