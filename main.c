@@ -1,29 +1,43 @@
 #include <stdio.h>
 #include "lexer.h"
+#include "parse_common.h"
 
-int my_obtainer() {
-    static char *str = "int x;";
-    return *str++;
+typedef struct {
+    char *str;
+    int pos;
+} string_with_pos;
+
+int my_obtainer(void *arg) {
+    string_with_pos *swp = (string_with_pos *) arg;
+    return swp->str[swp->pos++];
 }
 
-int getchar_dbg() {
+int getchar_dbg(void *arg) {
     int ret = getchar();
-    printf("You entered %d\n", ret);
+    if (arg != NULL) printf("You entered %d\n", ret);
     return ret;
 }
 
 int main(void) {
+    obtaint_fn *f = (obtaint_fn *) get_token;
+
+    string_with_pos swp = {
+        .str = "int x = 7;",
+        .pos = 0
+    };
+
     lexer_state state;
-    lexer_state_init(&state, getchar);
+    //lexer_state_init(&state, getchar_dbg, NULL);
+    lexer_state_init(&state, my_obtainer, &swp);
 
     token t;
 
     while (1) {
-        int rc = get_token(&state, &t);
+        int rc = get_token(&t, &state);
         if (rc < 0) {
             printf("Error! Code = %d\n", rc);
             break;
-        } else if (rc == 0) {
+        } else if (t.type == TOK_EOS) {
             puts("Done!");
             break;
         } else {
@@ -52,6 +66,5 @@ int main(void) {
         }
     }
 
-    printf("\nHello World\n");
     return 0;
 }

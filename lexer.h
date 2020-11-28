@@ -21,16 +21,17 @@ the tokens as a type. This is why lexer_t contains a
 #include "util/vector.h"
 
 //getc was already taken
-typedef int obtainc_fn();
+typedef int obtainc_fn(void *arg);
 
 typedef struct {
     char lookahead;
     obtainc_fn *obtainc;
+    void *obtainc_arg; //Too slow?
 
     //TODO: symbol table, active macros table, etc.
 } lexer_state;
 
-void lexer_state_init(lexer_state *l, obtainc_fn *fn);
+void lexer_state_init(lexer_state *l, obtainc_fn *fn, void *obtainc_arg);
 
 #define TOKEN_TYPES \
     X(TOK_IDENT), \
@@ -129,6 +130,41 @@ typedef enum {
 
 extern char const *const keywords[];
 
+//These all have to be managed by hand if (for whatever reason)
+//we decide to change the keywords (or their order)
+#define IS_TYPE_DECL_KW(kw) (((kw)>=KW_char) && ((kw)<=KW_inline))
+//FIXME: some of these are actually more like "labels" (case, default)
+//and some of them could not be used by parse_stmt (else)
+#define IS_STMT_KW(kw) (((kw)>=KW_if) && ((kw)<=KW_goto))
+//I made a small effort to order these from most to least common
+#define IS_UOP_KW(kw) (         \
+    ((kw) == '*') ||            \
+    ((kw) == '&') ||            \
+    ((kw) == '!') ||            \
+    ((kw) == KW_plus_plus) ||   \
+    ((kw) == KW_minus_minus) || \
+    ((kw) == '~') ||            \
+    ((kw) == '-') ||            \
+    ((kw) == '+')               \
+)
+#define IS_POSTFIX_KW(kw) (     \
+    ((kw) == KW_plus_plus) ||   \
+    ((kw) == KW_minus_minus)    \
+)
+//Helper for IS_BOP_KW
+#define __IS_NOT_BOP_KW(kw) (   \
+    ((kw) == KW_plus_plus) ||   \
+    ((kw) == KW_minus_minus) || \
+    ((kw) == '!') ||            \
+    ((kw) == '~')               \
+)
+//FIXME? This assumes the lexer will never return an invalid
+//ASCII char operator
+#define IS_BOP_KW(kw) (                                        \
+    (((kw) >= KW_neq) || ((kw) <= __LAST_VALID_ASCII_CHAR)) && \
+    !__IS_NOT_BOP_KW(kw)                                       \
+)
+
 typedef struct {
     token_t type;
     union {
@@ -166,6 +202,9 @@ typedef struct {
 //Returns number of tokens read (which can never exceed one). If 
 //it returns zero, then we have reached the end of the input.
 //Negative return means error
-int get_token(lexer_state *state, token *dest);
+//NOTE: these areguments are reversed from my usual style, but I 
+//did this so get_token could be cast to an obtaint_fn type (see 
+//parse_common.h)
+int get_token(token *dest, lexer_state *state);
 
 #endif

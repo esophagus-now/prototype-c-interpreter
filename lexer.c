@@ -6,9 +6,10 @@
 #include "util/symtab.h"
 #include "util/vector.h"
 
-void lexer_state_init(lexer_state *l, obtainc_fn *fn) {
-    l->lookahead = ' ';
+void lexer_state_init(lexer_state *l, obtainc_fn *fn, void *obtainc_arg) {
+    l->lookahead = ' '; //Could have called obtainc
     l->obtainc = fn;
+    l->obtainc_arg = obtainc_arg;
 }
 
 //This array is used to map a keyword/operator string to a 
@@ -103,6 +104,8 @@ static unsigned get_kw_number(char const *str) {
     return 0;
 }
 
+#define OBTAINC(state) (state->obtainc(state->obtainc_arg))
+
 static void lex_ident(lexer_state *state, token *dest) {
     char c = state->lookahead;
 
@@ -113,7 +116,7 @@ static void lex_ident(lexer_state *state, token *dest) {
 
     vector_push(line, c);
 
-    while(classify(c = state->obtainc()) == IDENT) {
+    while(classify(c = OBTAINC(state)) == IDENT) {
         hash = step_hash(hash, c);
         vector_push(line, c);
     }
@@ -148,7 +151,7 @@ static void lex_single_char_kw(lexer_state *state, token *dest) {
     //printf("KW: [%c]\n", c);
     dest->type = TOK_KW;
     dest->as_kw = c;
-    state->lookahead = state->obtainc();
+    state->lookahead = OBTAINC(state);
 }
 
 //TODO: actually parse the number and support floating
@@ -161,7 +164,7 @@ static void lex_num(lexer_state *state, token *dest) {
     vector_init(line);
 
     vector_push(line, c);
-    while(classify(c = state->obtainc()) == NUMBER) vector_push(line, c);
+    while(classify(c = OBTAINC(state)) == NUMBER) vector_push(line, c);
 
     vector_push(line, '\0');
 
@@ -179,7 +182,7 @@ static int lex_look_again(lexer_state *state, token *dest) {
     char pair[3];
     char first = state->lookahead;
     pair[0] = first;
-    char second = state->obtainc();
+    char second = OBTAINC(state);
     pair[1] = second;
     pair[2] = '\0';
 
@@ -190,9 +193,9 @@ static int lex_look_again(lexer_state *state, token *dest) {
             //printf("KW: [%s]\n", pair);
             dest->type = TOK_KW;
             dest->as_kw = KW_arrow;
-            state->lookahead = state->obtainc();
+            state->lookahead = OBTAINC(state);
 
-            return 0;
+            return 1;
         }
         //Fall-through intended
     case '<': case '>': case '&': case '|': case '+': 
@@ -205,7 +208,7 @@ static int lex_look_again(lexer_state *state, token *dest) {
             dest->type = TOK_KW;
             dest->as_kw = kw_num;
 
-            state->lookahead = state->obtainc();
+            state->lookahead = OBTAINC(state);
             return 1;
         }
         //Fall-through intended
@@ -218,7 +221,7 @@ static int lex_look_again(lexer_state *state, token *dest) {
             dest->type = TOK_KW;
             dest->as_kw = kw_num;
 
-            state->lookahead = state->obtainc();
+            state->lookahead = OBTAINC(state);
             return 1;
         } else {
             //printf("KW: [%c]\n", first);
@@ -233,7 +236,7 @@ static int lex_look_again(lexer_state *state, token *dest) {
     case '/':
         if (second == '/') {
             char c;
-            while ((c = state->obtainc()) != '\n');
+            while ((c = OBTAINC(state)) != '\n');
             state->lookahead = c;
             return 1;
         } else if (second == '*') {
@@ -245,7 +248,7 @@ static int lex_look_again(lexer_state *state, token *dest) {
             dest->type = TOK_KW;
             dest->as_kw = KW_div_eq;
 
-            state->lookahead = state->obtainc();
+            state->lookahead = OBTAINC(state);
             return 1;
         }
         //Fall-through intended
@@ -279,36 +282,36 @@ static int resolve_escape(lexer_state *state, char *dest) {
     char c = state->lookahead;
 
     switch (c) {
-    case '\\': *dest = '\\'; state->lookahead = state->obtainc(); break;
-    case '\'': *dest = '\''; state->lookahead = state->obtainc(); break;
-    case 't': *dest = '\t'; state->lookahead = state->obtainc(); break;
-    case 'n': *dest = '\n'; state->lookahead = state->obtainc(); break;
-    case 'v': *dest = '\v'; state->lookahead = state->obtainc(); break;
-    case 'a': *dest = '\a'; state->lookahead = state->obtainc(); break;
-    case '0': *dest = '\0'; state->lookahead = state->obtainc(); break;
-    case '?': *dest = '\?'; state->lookahead = state->obtainc(); break;
-    case '"': *dest = '"'; state->lookahead = state->obtainc(); break;
-    case 'e': *dest = '\x1b'; state->lookahead = state->obtainc(); break;
+    case '\\': *dest = '\\'; state->lookahead = OBTAINC(state); break;
+    case '\'': *dest = '\''; state->lookahead = OBTAINC(state); break;
+    case 't': *dest = '\t'; state->lookahead = OBTAINC(state); break;
+    case 'n': *dest = '\n'; state->lookahead = OBTAINC(state); break;
+    case 'v': *dest = '\v'; state->lookahead = OBTAINC(state); break;
+    case 'a': *dest = '\a'; state->lookahead = OBTAINC(state); break;
+    case '0': *dest = '\0'; state->lookahead = OBTAINC(state); break;
+    case '?': *dest = '\?'; state->lookahead = OBTAINC(state); break;
+    case '"': *dest = '"'; state->lookahead = OBTAINC(state); break;
+    case 'e': *dest = '\x1b'; state->lookahead = OBTAINC(state); break;
     case 'x': {
         int rc;
-        char tmp = hex_digit_to_num(state->obtainc(), &rc) << 4;
+        char tmp = hex_digit_to_num(OBTAINC(state), &rc) << 4;
         if (rc != 0) {
             puts("Bad hex escape char");
             return rc; //Propagate error code
         }
-        tmp |= hex_digit_to_num(state->obtainc(), &rc);
+        tmp |= hex_digit_to_num(OBTAINC(state), &rc);
         if (rc != 0) {
             puts("Bad hex escape char");
             return rc; //Propagate error code
         }
         *dest = tmp;
-        state->lookahead = state->obtainc();
+        state->lookahead = OBTAINC(state);
         break;
     }
     //TODO: \u, \0NN, and probably a few rare cases I forgot
     default:
         printf("Unknown escape [\\%c]\n", c);
-        state->lookahead = state->obtainc();
+        state->lookahead = OBTAINC(state);
         return -1;
     }
 
@@ -321,14 +324,14 @@ static int lex_char(lexer_state *state, token *dest) {
     char literal;
 
     if (c == '\\') {
-        state->lookahead = state->obtainc();
+        state->lookahead = OBTAINC(state);
         int rc = resolve_escape(state, &literal);
         if (rc != 0) {
             return rc; //TODO: use mm_err?
         }
     } else {
         literal = c;
-        state->lookahead = state->obtainc();
+        state->lookahead = OBTAINC(state);
     }
 
     if (state->lookahead != '\'') {
@@ -342,7 +345,7 @@ static int lex_char(lexer_state *state, token *dest) {
     dest->as_number.type = TQ_CHAR;
     dest->as_number.as_unsigned = literal;
 
-    state->lookahead = state->obtainc();
+    state->lookahead = OBTAINC(state);
     return 1;
 }
 
@@ -364,7 +367,7 @@ static int lex_string(lexer_state *state, token *dest) {
             return -1; //Propagate error code
         } else {
             vector_push(line, state->lookahead);
-            state->lookahead = state->obtainc();
+            state->lookahead = OBTAINC(state);
         }
     }
 
@@ -376,7 +379,7 @@ static int lex_string(lexer_state *state, token *dest) {
     dest->type = TOK_STR;
     dest->as_str = line; //Can't free line!
 
-    state->lookahead = state->obtainc(); //Read past closing quote
+    state->lookahead = OBTAINC(state); //Read past closing quote
     return 1;
 }
 
@@ -385,34 +388,34 @@ static void lex_prepro(lexer_state *state, token *dest) {
     char c = state->lookahead;
     while (c != '\n') {
         if (c == '\\') {
-            c = state->obtainc();
-            if (c == '\n') c = state->obtainc();
+            c = OBTAINC(state);
+            if (c == '\n') c = OBTAINC(state);
         } else {
-            c = state->obtainc();
+            c = OBTAINC(state);
         }
     }
 
     dest->type = TOK_ERROR;
     dest->as_error = "Preprocessor unsupported";
 
-    state->lookahead = state->obtainc();
+    state->lookahead = OBTAINC(state);
 }
 
 //Returns number of tokens read (which can never exceed one). If 
 //it returns zero, then we have reached the end of the input.
 //Negative return means error
-int get_token(lexer_state *state, token *dest) {
+int get_token(token *dest, lexer_state *state) {
     int ret = 1;
 
     class_t cls;
     while ((cls = classify(state->lookahead)) == WS) {
-        state->lookahead = state->obtainc();
+        state->lookahead = OBTAINC(state);
     }
 
     switch(cls) {
     case END_OF_INPUT:
-        puts("Done");
-        return 0;
+        dest->type = TOK_EOS;
+        break;
     case IDENT:
         lex_ident(state, dest);
         break;
@@ -429,15 +432,15 @@ int get_token(lexer_state *state, token *dest) {
         ret = lex_look_again(state, dest);
         break;
     case CHAR:
-        state->lookahead = state->obtainc(); //Read past opening quote
+        state->lookahead = OBTAINC(state); //Read past opening quote
         ret = lex_char(state, dest);
         break;
     case STRING:
-        state->lookahead = state->obtainc(); //Read past opening quote
+        state->lookahead = OBTAINC(state); //Read past opening quote
         ret = lex_string(state, dest);
         break;
     case PREPRO:
-        state->lookahead = state->obtainc(); //Read past pound character
+        state->lookahead = OBTAINC(state); //Read past pound character
         lex_prepro(state, dest);
         break;
     default:
