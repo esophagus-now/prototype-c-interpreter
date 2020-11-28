@@ -110,6 +110,8 @@ int parse_expr(parse_state *state, kw_t last_bop, ast *a, ast_node **n_out) {
             puts("\nError, unmatched '('");
             return -1;
         }
+        //Advance past ')'
+        OBTAINT(state, &(state->lookahead));
     } else if (state->lookahead.type == TOK_KW && IS_UOP_KW(state->lookahead.as_kw)) {
         //E <- unary_op E
         kw_t op = state->lookahead.as_kw;
@@ -193,7 +195,7 @@ int parse_expr(parse_state *state, kw_t last_bop, ast *a, ast_node **n_out) {
                 puts("\nError, unmatched '['");
                 return -1;
             }
-            
+
             //Advance past ']'
             OBTAINT(state, &(state->lookahead));
 
@@ -207,6 +209,8 @@ int parse_expr(parse_state *state, kw_t last_bop, ast *a, ast_node **n_out) {
         ) {
             //n is the condition expression
             ast_node *val_if_true;
+            
+            //Advance past '?'
             OBTAINT(state, &(state->lookahead));
             int rc = parse_expr(state, 0, a, &val_if_true);
             if (rc < 0) return rc; //Propagate error code
@@ -216,8 +220,10 @@ int parse_expr(parse_state *state, kw_t last_bop, ast *a, ast_node **n_out) {
                 return -1;
             }
 
-            ast_node *val_if_false;
+            //Advance past ':'
             OBTAINT(state, &(state->lookahead));
+
+            ast_node *val_if_false;
             rc = parse_expr(state, 0, a, &val_if_false);
             if (rc < 0) return rc; //Propagate error code
 

@@ -24,13 +24,13 @@ int main(void) {
     obtaint_fn *f = (obtaint_fn *) get_token;
 
     string_with_pos swp = {
-        .str = "x[*p++] = 6+7*8?c=3:5%6;",
+        .str = "x[*p++] = (6+7)*8?c=3:5%6;",
         .pos = 0
     };
 
     lexer_state lstate;
-    //lexer_state_init(&state, getchar_dbg, NULL);
-    lexer_state_init(&lstate, my_obtainer, &swp);
+    lexer_state_init(&lstate, getchar_dbg, NULL);
+    //lexer_state_init(&lstate, my_obtainer, &swp);
 
     ast *a = ast_new();
     ast_node *root;
