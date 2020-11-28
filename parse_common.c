@@ -12,6 +12,7 @@ void parse_state_init(parse_state *state, obtaint_fn *obtaint, void *obtaint_arg
 nonterm_t peek_nonterm(parse_state *state) {
     if (!state->lookahead_vld) {
         state->obtaint(&(state->lookahead), state->obtaint_arg);
+        state->lookahead_vld = 1;
     }
 
     switch(state->lookahead.type) {

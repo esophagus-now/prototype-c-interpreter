@@ -94,13 +94,13 @@ extern char const *const token_t_names[];
     X(goto),
 
 #define MULTI_CHARACTER_OPERATORS\
+    X(plus_plus, "++"),\
+    X(minus_minus, "--"),\
     X(neq, "!="),\
     X(mod_eq, "%="),\
     X(and_eq, "&="),\
     X(times_eq, "*="),\
-    X(plus_plus, "++"),\
     X(plus_eq, "+="),\
-    X(minus_minus, "--"),\
     X(arrow, "->"),\
     X(minus_eq, "-="),\
     X(div_eq, "/="),\
@@ -157,18 +157,21 @@ extern char const *const keywords[];
     ((kw) == KW_plus_plus) ||   \
     ((kw) == KW_minus_minus)    \
 )
-//Helper for IS_BOP_KW
-#define __IS_NOT_BOP_KW(kw) (   \
-    ((kw) == KW_plus_plus) ||   \
-    ((kw) == KW_minus_minus) || \
-    ((kw) == '!') ||            \
-    ((kw) == '~')               \
-)
-//FIXME? This assumes the lexer will never return an invalid
-//ASCII char operator
-#define IS_BOP_KW(kw) (                                        \
-    (((kw) >= KW_neq) || ((kw) <= __LAST_VALID_ASCII_CHAR)) && \
-    !__IS_NOT_BOP_KW(kw)                                       \
+//I made a small effort to order these from most to least common
+#define IS_BOP_KW(kw) (         \
+    ((kw) >= KW_neq) ||         \
+    ((kw) == '=') ||            \
+    ((kw) == '+') ||            \
+    ((kw) == '-') ||            \
+    ((kw) == '*') ||            \
+    ((kw) == '/') ||            \
+    ((kw) == '<') ||            \
+    ((kw) == '>') ||            \
+    ((kw) == '%') ||            \
+    ((kw) == '&') ||            \
+    ((kw) == '|') ||            \
+    ((kw) == '^') ||            \
+    ((kw) == ',')               \
 )
 
 typedef struct {
@@ -212,5 +215,7 @@ typedef struct {
 //did this so get_token could be cast to an obtaint_fn type (see 
 //parse_common.h)
 int get_token(token *dest, lexer_state *state);
+
+char const* dbg_keyword_as_str(kw_t num);
 
 #endif

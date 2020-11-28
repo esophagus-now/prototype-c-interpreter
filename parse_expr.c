@@ -1,12 +1,13 @@
 #include <assert.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
+
+#include "parse_common.h"
 #include "parse_expr.h"
 #include "ast.h"
 #include "lexer.h"
 
-//TODO: there are many, many more operators and
-//precedence levels. 
 //TODO: sizeof operator
 
 //For everything else in this frontend I did it myself
@@ -22,7 +23,7 @@
 //Finally, I get all the unary operators for free, again because
 //of the way I wrote the parser
 
-int bop_prec[] = {
+static int const bop_prec[] = {
     ['\0'] = 0, //Sentinel
     [','] = 1,
     ['='] = 2,
@@ -57,7 +58,7 @@ int bop_prec[] = {
 
 };
 
-int bop_is_rassoc[] = {
+static int const bop_is_rassoc[] = {
     ['\0'] = 1, //This should never be used
     [','] = 0,
     ['='] = 1,
@@ -93,10 +94,10 @@ int bop_is_rassoc[] = {
 
 #define OBTAINT(state, tok) (state->obtaint(tok, state->obtaint_arg))
 
-#if 0
-
 //Returns 0 on success, or negative on error
-int parse_expr(parse_state *state, char last_bop, ast *a, ast_node **n_out) {
+int parse_expr(parse_state *state, kw_t last_bop, ast *a, ast_node **n_out) {
+    assert(state->lookahead_vld);
+
     ast_node *n = NULL;
 
     //Check FIRST set
@@ -110,13 +111,12 @@ int parse_expr(parse_state *state, char last_bop, ast *a, ast_node **n_out) {
             return -1;
         }
     } else if (state->lookahead.type == TOK_KW && IS_UOP_KW(state->lookahead.as_kw)) {
-        //E <- UE
+        //E <- unary_op E
         kw_t op = state->lookahead.as_kw;
         ast_node *operand_node;
         OBTAINT(state, &(state->lookahead));
         int rc = parse_expr(state, 0, a, &operand_node);
         if (rc < 0) return rc; //Propagate error code
-        printf("(%c)", op); //Make sure to mark as unary op in output
 
         n = ast_node_alloc(a);
         n->node_type = UNARY_OP;
@@ -127,23 +127,18 @@ int parse_expr(parse_state *state, char last_bop, ast *a, ast_node **n_out) {
         //TODO: struct member access
         n = ast_node_alloc(a);
         n->node_type = IDENT;
-        char *dest = n->ident_str;
-        printf("{");
-        do {
-            *dest++ = *str;
-            printf("%c", *str++);
-        } while (isalpha(*str));
-        *dest = '\0';
-        printf("}");
-    } else if (isdigit(*str)) {
-        //Quick-n-dirty
+        //FIXME: look up the symbol and put it in the node
+        //For the sake of testing,
+        strcpy(n->ident_str, state->lookahead.as_ident.name);
+
+        OBTAINT(state, &(state->lookahead));
+    } else if (state->lookahead.type == TOK_NUMBER) {
+        // E <- literal
         n = ast_node_alloc(a);
         n->node_type = NUMBER;
-        n->value = strtol(str, NULL, 0);
-        printf("@");
-        do {
-            printf("%c", *str++);
-        } while (isxdigit(*str));
+        //FIXME: stick the value in the ast_node somewhere
+        
+        OBTAINT(state, &(state->lookahead));
     } else {
         puts("\nError, expected '(', unary operator, identifier, or literal");
         return -1;
@@ -157,30 +152,29 @@ int parse_expr(parse_state *state, char last_bop, ast *a, ast_node **n_out) {
     //its children
 
     //At this point, we are in the state E <- E.
-    //and we need one token of lookahed to figure out what to do
+    //and we need to use the lookahead to figure out what to do
     while (1) {
-        char LA = *str;
-        if (LA == '#') {
-            //Postfix operator
-            printf("#");
-            str++;
-
+        if (state->lookahead.type == TOK_KW && IS_POSTFIX_KW(state->lookahead.as_kw)) {
+            // E <- E postfix_op
             ret = ast_node_alloc(a);
             ret->node_type = POSTFIX_OP;
-            ret->op = '#';
+            ret->op = state->lookahead.as_kw;
             ast_node_set_child(a, ret, 0, n);
-        } else if (is_op(LA)) {
+            OBTAINT(state, &(state->lookahead));
+        } else if (state->lookahead.type == TOK_KW && IS_BOP_KW(state->lookahead.as_kw)) {
+            // E <- E binary_op E, except we need to check precedence and 
+            // associativity
+            kw_t LA = state->lookahead.as_kw;
             if (
                 bop_prec[LA] > bop_prec[last_bop] ||
                 (bop_prec[LA] == bop_prec[last_bop] && bop_is_rassoc[LA])
             ) {
                 // bop in lookahead must be performed first
-                char op = *str++;
+                kw_t op = LA;
                 ast_node *rhs; //n is the lhs
-                int incr = parse_expr(str, op, a, &rhs);
-                if (incr < 0) return incr; //Propagate error code
-                str += incr;
-                printf("%c", op);
+                OBTAINT(state, &(state->lookahead));
+                int rc = parse_expr(state, op, a, &rhs);
+                if (rc < 0) return rc; //Propagate error code
                 ret = ast_node_alloc(a);
                 ret->node_type = BINARY_OP;
                 ret->op = op;
@@ -190,41 +184,42 @@ int parse_expr(parse_state *state, char last_bop, ast *a, ast_node **n_out) {
                 n = ret; //Very subtle
                 break;
             }
-        } else if (LA == '[') {
+        } else if (state->lookahead.type == TOK_KW && state->lookahead.as_kw == '[') {
             ast_node *index_expr;
-            int incr = parse_expr(++str, 0, a, &index_expr);
-            if (incr < 0) return incr; //Propagate error code
-            str += incr;
-            if (*str++ != ']') {
+            OBTAINT(state, &(state->lookahead));
+            int rc = parse_expr(state, 0, a, &index_expr);
+            if (rc < 0) return rc; //Propagate error code
+            if (state->lookahead.type != TOK_KW || state->lookahead.as_kw != ']') {
                 puts("\nError, unmatched '['");
                 return -1;
             }
-            printf("["); //In postfix, we read this as an operator
-            // that pops the top two things from the stack, and
-            // indexes the first with the second
+            
+            //Advance past ']'
+            OBTAINT(state, &(state->lookahead));
 
             ret = ast_node_alloc(a);
             ret->node_type = INDEX_EXPR;
             ast_node_set_child(a, ret, 0, n);
             ast_node_set_child(a, ret, 1, index_expr);
-        } else if (LA == '?' && bop_prec[last_bop] <= bop_prec['=']) {
+        } else if (
+            (state->lookahead.type == TOK_KW && state->lookahead.as_kw == '?') && 
+            (bop_prec[last_bop] <= bop_prec['='])
+        ) {
             //n is the condition expression
             ast_node *val_if_true;
-            int incr = parse_expr(++str, 0, a, &val_if_true);
-            if (incr < 0) return incr; //Propagate error code
-            str += incr;
-            if (*str++ != ':') {
+            OBTAINT(state, &(state->lookahead));
+            int rc = parse_expr(state, 0, a, &val_if_true);
+            if (rc < 0) return rc; //Propagate error code
+
+            if (state->lookahead.type != TOK_KW || state->lookahead.as_kw != ':') {
                 puts("\nError, '?' without ':'");
                 return -1;
             }
+
             ast_node *val_if_false;
-            incr = parse_expr(str, 0, a, &val_if_false);
-            if (incr < 0) return incr; //Propagate error code
-            str += incr;
-            printf("?"); //In postfix, we read this as an operator
-            // that pops the top three things from the stack, and
-            // returns the second if the first is true, otherwise
-            // the third.
+            OBTAINT(state, &(state->lookahead));
+            rc = parse_expr(state, 0, a, &val_if_false);
+            if (rc < 0) return rc; //Propagate error code
 
             ret = ast_node_alloc(a);
             ret->node_type = TERNARY_OP;
@@ -240,48 +235,5 @@ int parse_expr(parse_state *state, char last_bop, ast *a, ast_node **n_out) {
     }
 
     *n_out = ret;
-    return str - str_saved;
-}
-
-int main(void) {
-    //I am using '#' as a one-character replacement for '++'
-    ast a;
-    ast_init(&a);
-
-    char const *test = "x[*p#]=2*(i-1)*r[i]?3*r[j-1]:43*mything;";
-    printf("Original: %s\n", test);
-    ast_node *test_root;
-    printf("Postfix: ");
-    int rc = parse_expr(test, 0, &a, &test_root);
-    puts("");
-    if (rc < 0) {
-        puts("Failed");
-        return -1;
-    }
-
-    printf("In-order AST traversal: ");
-    print_ast(&a, test_root);
-    puts("\n");
-
-    char const *test2 = "x=y=1+2+3;";
-    printf("Original: %s\n", test2);
-    ast_deinit(&a);
-    ast_init(&a);
-    ast_node *test2_root;
-    printf("Postfix: ");
-    rc = parse_expr(test2, 0, &a, &test2_root);
-    puts("");
-    if (rc < 0) {
-        puts("Failed");
-        return -1;
-    }
-
-    printf("In-order AST traversal: ");
-    print_ast(&a, test2_root);
-    puts("");
-
-    ast_deinit(&a);
     return 0;
 }
-
-#endif

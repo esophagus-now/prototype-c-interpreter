@@ -1,0 +1,25 @@
+The original plan has always been to write the interpreter once, then
+rewrite it from scratch. This is for four reasons: 
+
+First, I want to record development videos for anyone who is interested in the
+project, but they will be way too long an undirected if I use the first attempt. 
+The rewrite development will be shorter and easier to understand.
+
+Second, I knew there would end up being some very ugly code as I was figuring out
+how to store all my bookkeeping and the general approach to the functions.
+
+Third, I'm very interested in making this code as library-friendly as possible, 
+and using it myself as a library will point out annoying quirks that would be 
+worth removing. 
+
+Finally, I can pull out gprof on this prototype and see if there is anything 
+worth streamlining 
+
+[ ] Move token type enums, defines, etc. to a separate "defines.h"
+[ ] Find more elegant way to deal with three-char ops (>>= and <<=)
+[ ] Enforce a consistent style of managing the lookahead in the state
+[ ] Change ast.h to use vector.h (if I decide to keep everything in an array like that)
+[ ] Add support for structs, unions, enums, and typedefs (obviously)
+[ ] Write clear explanation instead of "Very subtle"
+[ ] Fill in missing "advance past" comments
+[ ] sizeof operator (just a unary op, but argument could be a type decl)

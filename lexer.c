@@ -478,3 +478,15 @@ int get_token(token *dest, lexer_state *state) {
     }
     return ret;
 }
+
+char const* dbg_keyword_as_str(kw_t num) {
+    static char single_op_str[2] = {0, 0};
+    
+    if (num < 256) {
+        single_op_str[0] = num;
+        return single_op_str;
+    } else {
+        return keywords[num - 256];
+    }
+
+}

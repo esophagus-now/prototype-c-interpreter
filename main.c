@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "lexer.h"
 #include "parse_common.h"
+#include "parse_expr.h"
+#include "ast.h"
 
 typedef struct {
     char *str;
@@ -22,14 +24,41 @@ int main(void) {
     obtaint_fn *f = (obtaint_fn *) get_token;
 
     string_with_pos swp = {
-        .str = "int x = 7; x >>= 2 << 2;",
+        .str = "x[*p++] = 6+7*8?c=3:5%6;",
         .pos = 0
     };
 
-    lexer_state state;
+    lexer_state lstate;
     //lexer_state_init(&state, getchar_dbg, NULL);
-    lexer_state_init(&state, my_obtainer, &swp);
+    lexer_state_init(&lstate, my_obtainer, &swp);
 
+    ast *a = ast_new();
+    ast_node *root;
+
+    parse_state pstate;
+    parse_state_init(&pstate, (obtaint_fn *) get_token, &lstate);
+
+    nonterm_t type = peek_nonterm(&pstate);
+    if (type != NT_EXPR) {
+        puts("Not an expression. Time to go home");
+        ast_free(a);
+        return 0;
+    }
+
+    int rc = parse_expr(&pstate, 0, a, &root);
+    if (rc < 0) {
+        puts("\nParsing error");
+        ast_free(a);
+        return -1;
+    } else {
+        print_ast(a, root);
+    }
+
+    ast_free(a);
+
+    puts("\nDone");
+
+    /*
     token t;
 
     while (1) {
@@ -65,6 +94,6 @@ int main(void) {
             }
         }
     }
-
+    */
     return 0;
 }
