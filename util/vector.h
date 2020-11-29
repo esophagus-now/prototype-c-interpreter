@@ -69,8 +69,7 @@ void vector_free(void *v);
 
 void *__vector_lengthen(unsigned elem_sz, unsigned *len, unsigned *cap, void **data);
 //Extends vector length by one (resizing, if necessary) then 
-//writes a pointer to the new free element into the location 
-//indicated by dest. 
+//returns a pointer to the new free element.
 #define vector_lengthen(v) \
     __vector_lengthen(sizeof(*(v)),&(v##_len),&(v##_cap),(void**)(&(v)))
 

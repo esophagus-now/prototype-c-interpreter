@@ -2,6 +2,7 @@
 #include "lexer.h"
 #include "parse_common.h"
 #include "parse_expr.h"
+#include "parse_type.h"
 #include "ast.h"
 
 typedef struct {
@@ -28,33 +29,49 @@ int main(void) {
         .pos = 0
     };
 
+    string_with_pos swp2 = {
+        .str = "int (*x)(char *, int) = NULL;",
+        .pos = 0
+    };
+
     lexer_state lstate;
     lexer_state_init(&lstate, getchar_dbg, NULL);
     //lexer_state_init(&lstate, my_obtainer, &swp);
+    //lexer_state_init(&lstate, my_obtainer, &swp2);
 
-    ast *a = ast_new();
-    ast_node *root;
 
     parse_state pstate;
     parse_state_init(&pstate, (obtaint_fn *) get_token, &lstate);
 
     nonterm_t type = peek_nonterm(&pstate);
-    if (type != NT_EXPR) {
-        puts("Not an expression. Time to go home");
-        ast_free(a);
-        return 0;
-    }
+    if (type == NT_EXPR) {
+        ast *a = ast_new();
+        ast_node *root;
+        int rc = parse_expr(&pstate, 0, a, &root);
+        if (rc < 0) {
+            puts("\nParsing error");
+            ast_free(a);
+            return -1;
+        } else {
+            print_ast(a, root);
+            ast_free(a);
+        }
+    } else if (type == NT_DECL) {
+        VECTOR_DECL(tq, tstr);
+        vector_init(tstr);
 
-    int rc = parse_expr(&pstate, 0, a, &root);
-    if (rc < 0) {
-        puts("\nParsing error");
-        ast_free(a);
-        return -1;
+        int rc = parse_type(&pstate, VECTOR_ARG(tstr));
+        if (rc < 0) {
+            puts("\nCould not parse declaration");
+            vector_free(tstr);
+        } else {
+            dbg_print_tq(tstr);
+            vector_free(tstr);
+        }
     } else {
-        print_ast(a, root);
+        puts("\nSorry, no support for this type of statement");
     }
 
-    ast_free(a);
 
     puts("\nDone");
 

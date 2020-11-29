@@ -172,7 +172,7 @@ static void lex_num(lexer_state *state, token *dest) {
     vector_free(line);
 
     dest->type = TOK_NUMBER;
-    dest->as_number.type = TQ_UINT;
+    dest->as_number.type = TQ_INT;
     dest->as_number.as_unsigned = 0xDEADBEEF; //TODO: parse number
     state->lookahead = c;
 }

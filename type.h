@@ -20,8 +20,8 @@ ARRAY:
 FUNCTION:
     This tq indicates how many arguments the function
     has. The following items in the string of tqs are,
-    in this order, the return and all parameters (if
-    any).
+    in this order, all parameters (if any) then the 
+    return type.
 
 */
 
@@ -38,15 +38,10 @@ typedef enum {
             //kind of complicates program logic to have to deal 
             //with that all the time
     TQ_CHAR,
-    TQ_UCHAR,
     TQ_SHORT,
-    TQ_USHORT,
     TQ_INT,
-    TQ_UINT,
     TQ_LONG,
-    TQ_ULONG,
-    TQ_LL,
-    TQ_ULL,
+    TQ_LL, /*Currently unsupported*/
     TQ_FLOAT,
     TQ_DOUBLE,
     TQ_VOID,
@@ -60,7 +55,9 @@ typedef enum {
 } tq_t;
 
 #define IS_BUILTIN(x) ((x) >= TQ_CHAR && (x) <= TQ_BITFIELD)
+#define IS_BASE_TYPE(x) (IS_BUILTIN(x) || ((x) == TQ_USER_TYPE))
 
+//TODO: should unsigned be a qualifier? What about long and short? long long?
 #define TQ_CONST        (1<<0)
 #define TQ_VOLATILE     (1<<1)
 #define TQ_EXTERN       (1<<2)
@@ -68,6 +65,7 @@ typedef enum {
 #define TQ_REGISTER     (1<<4)
 #define TQ_AUTO         (1<<5)
 #define TQ_COMPLEX      (1<<6)
+#define TQ_UNSIGNED     (1<<7)
 
 #define ARRAY_AUTO_SIZE UINT32_MAX
 
@@ -126,7 +124,7 @@ typedef struct tq {
 // 1. (variation) Add bounds-checking so that we throw an
 //    error instead of overflowing (like the famous gets() worm)
 // 2. Use a heap-allocated array that we automatically
-//    realloc when we're out of space.
+//    realloc when we're out of space (à la std::vector).
 // 3. Custom pool allocator.
 //
 //Each has pros and cons. 1. is very simple and can be very 
@@ -152,5 +150,8 @@ unsigned tqlen(tq const *t);
 
 //Like strdup but for tqs
 tq* tqdup(tq const *t);
+
+//Returns position after last-printed item
+tq const* dbg_print_tq(tq const *t);
 
 #endif
