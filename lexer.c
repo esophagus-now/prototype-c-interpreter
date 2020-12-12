@@ -12,8 +12,9 @@ void lexer_state_init(lexer_state *l, obtainc_fn *fn, void *obtainc_arg) {
     l->obtainc_arg = obtainc_arg;
 }
 
-//This array is used to map a keyword/operator string to a 
-//Need to remember to add 256 to the index!
+//This array is used to map a keyword/operator number to a string 
+//Need to remember to subtract 256 from the index!
+//It's better to use the dbg_keyword_as_str function
 char const *const keywords[] = {
     #define X(x) #x 
     KEYWORDS
@@ -278,6 +279,7 @@ static int lex_look_again(lexer_state *state, token *dest) {
         //Fall-through intended
     default:
         //TODO: handle floats that start with a '.'
+        //TODO: handle ellipsis operator (variadic functions)
         //printf("KW: [%c]\n", first);            
         
         dest->type = TOK_KW;

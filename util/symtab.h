@@ -41,6 +41,10 @@ typedef struct {
     //a scope/translation unit.
 
     tq *data_type;
+
+    //TODO: since this is an interpreter, we also need to
+    //store the value of the symbol
+    int value;
 } symbol;
 
 int symcmp(symbol const *a, symbol const *b);

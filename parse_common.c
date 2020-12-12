@@ -28,6 +28,7 @@ nonterm_t peek_nonterm(parse_state *state) {
         if      (IS_STMT_KW(type))               return NT_STMT;
         else if (IS_TYPE_DECL_KW(type))          return NT_DECL;
         else if (IS_UOP_KW(type) || type == '(') return NT_EXPR;
+        else if (IS_UOP_KW(type) || type == ';') return NT_STMT;
         else                                     return NT_ERROR;
     }
     default:

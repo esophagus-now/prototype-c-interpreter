@@ -18,12 +18,20 @@ worth streamlining
 [ ] Move token type enums, defines, etc. to a separate "defines.h"
 [ ] Many headers define different enums for similar things. Try to unify them.
 [ ] Find more elegant way to deal with three-char ops (>>= and <<=)
+[ ] Deal with variadic functions
 [ ] Enforce a consistent style of managing the lookahead in the state
 [ ] Change ast.h to use vector.h (if I decide to keep everything in an array like that)
 [ ] Add support for structs, unions, enums, and typedefs (obviously)
+[ ] Add support for multiple declarations
 [ ] Write clear explanation instead of "Very subtle"
 [ ] Fill in missing "advance past" comments
 [ ] sizeof operator (just a unary op, but argument could be a type decl)
 [ ] Right now, to check if the token lookahead is a certain keyword, you need a really 
     long expression. This hurts readability. It should be simpler.
 [ ] Decide whether unsigned, short, and long are qualifiers
+[ ] Let parsers take in a special token that asks for a list of predictions.
+[ ] Initializers in declarations
+[ ] Decalarator lists (e.g. int x, *y = NULL, z;)
+[ ] lexer_state and parse_state need some way of tracking where we are in the file 
+[ ] The most difficult part of any frontend: good error messages and parser recovery
+[ ] Add prediction/suggestion support
